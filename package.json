@@ -1,0 +1,18 @@
+{
+    "name": "technet.recentprojects",
+    "title": "Recent projects",
+    "description": "Allows you to see and select recently opened projects from File menu without using 'Open Folder...' option",
+    "homepage": "https://github.com/technet/brackets.recentprojects",
+    "version": "0.1.0",
+    "author": "Technet <technetlk@gmail.com> (http://tutewall.com)",
+    "license": "MIT",
+    "engines": {
+        "brackets": ">=0.40.0"
+    },
+   "keywords": [
+       "recent",
+       "projects",
+       "folders",
+       "recent projects"
+   ]    
+}
