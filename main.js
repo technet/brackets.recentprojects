@@ -41,11 +41,7 @@ define (function(require, exports, module){
         }
     }
     
-    
-    function log(s) {
-        console.log("%c [helloworld] "+s,"color:blue;font-size:large");        
-    }
-    
+
     function saveToHistory(name, path)
     {
         var prjList = getRecentProjectList();                        
