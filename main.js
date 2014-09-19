@@ -117,10 +117,12 @@ define(function (require, exports, module) {
             }
         }
 
+        /*
         if (menuDividerEndId === null) {
             var endDividerMenuItem = fileMenu.addMenuDivider();
             menuDividerEndId = endDividerMenuItem.id;
         }
+        */
     }
 
     function clearCurrentMenuItems() {
