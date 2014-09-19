@@ -1,16 +1,17 @@
 // This is simple extension to remember recently open projects and make it easy to access them again from File menu.
 // Author: technetlk@gmail.com (https://github.com/technet/brackets.recentprojects, http://tutewall.com)
 
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, regexp: true, indent: 4, maxerr: 50 */
+/*jslint vars: true, plusplus: true, devel: true, nomen: true, regexp: true, indent: 4, maxerr: 50, */
 /*global define, brackets, $, _ */
 define(function (require, exports, module) {
     'use strict';
 
+    // Using new logic as in in-built extension
+    // https://github.com/adobe/brackets/blob/master/src/extensions/default/RecentProjects/main.js
+    // PreferencesManager.getViewState("recentProjects") this will return recent project list...
     // Constansts
     var EXT_NAME                    = "technet.recentprojects",
-        EXT_DATA_FOLDER             = "data",
         EXT_MAX_MENU_ITEMS          = 5,
-        EXT_MAX_HISTORY_ITEMS       = 5,
         EXT_MAX_MENU_FOLDER_LENGTH  = 20,
         EXT_PREF_HISTORY            = "history";
 
@@ -20,9 +21,8 @@ define(function (require, exports, module) {
         AppInit                     = brackets.getModule("utils/AppInit"),
         ProjectManager              = brackets.getModule("project/ProjectManager"),
         PreferencesManager          = brackets.getModule("preferences/PreferencesManager"),
-        Directory                   = brackets.getModule("filesystem/Directory"),
         FileUtils                   = brackets.getModule("file/FileUtils"),
-        prefs                       = PreferencesManager.getExtensionPrefs(EXT_NAME);
+        prefs                       = PreferencesManager.getExtensionPrefs(EXT_NAME);       // We need this in next release to remove any project history we have saved in preferences.
     
 
     // Commands Ids
@@ -30,22 +30,46 @@ define(function (require, exports, module) {
     
     // Module variables
     var currentMenuIds              = [],
-        menuDividerId               = null;
+        menuDividerStartId          = null,
+        menuDividerEndId            = null;
 
-    // This function to be changed either to use prefs or local file on disk
-    function getRecentProjectList() {
-        return prefs.get(EXT_PREF_HISTORY);
+    // This is taken from (https://github.com/adobe/brackets/blob/master/src/extensions/default/RecentProjects/main.js#L337)
+    function parsePath(path) {
+        var lastSlash = path.lastIndexOf("/"), folder, rest;
+        if (lastSlash === path.length - 1) {
+            lastSlash = path.slice(0, path.length - 1).lastIndexOf("/");
+        }
+        if (lastSlash >= 0) {
+            rest = " - " + (lastSlash ? path.slice(0, lastSlash) : "/");
+            folder = path.slice(lastSlash + 1);
+        } else {
+            rest = "/";
+            folder = path;
+        }
+
+        return {path: path, folder: folder, rest: rest};
     }
     
     // This function to be changed either to use prefs or local file on disk
-    function saveRecentProjectList(prjList) {
-        prefs.set(EXT_PREF_HISTORY, prjList);
-        prefs.save();
+    function getRecentProjectList() {
+        // We will use brackets inbuilt recent project list instead of our own.
+        var recentProjects = PreferencesManager.getViewState("recentProjects") || [],
+            requiredProjects = [],
+            i;
+
+        // We don't need the top most project as it is the one currently user working on..
+        // Following part taken from (https://github.com/adobe/brackets/blob/master/src/extensions/default/RecentProjects/main.js#L66)
+        for (i = 1; i < recentProjects.length && i <= EXT_MAX_MENU_ITEMS; i++) {
+            // We have to canonicalize & then de-canonicalize the path here, since our pref format uses no trailing "/"
+            requiredProjects[i - 1] = parsePath(FileUtils.stripTrailingSlash(ProjectManager.updateWelcomeProjectPath(recentProjects[i] + "/")));
+        }
+
+        return requiredProjects;
     }
     
     function openRecentProjectEventHandler() {
         var commandId = this.getID();
-        var historyId = parseInt(commandId.substr(commandId.lastIndexOf('-') + 1));
+        var historyId = parseInt(commandId.substr(commandId.lastIndexOf('-') + 1), 10);
         
         var prjList = getRecentProjectList();
         if (prjList !== undefined && prjList.length > historyId) {
@@ -53,42 +77,7 @@ define(function (require, exports, module) {
             ProjectManager.openProject(prjPath);
         }
     }
-    
 
-    function saveToHistory(name, path) {
-        var prjList = getRecentProjectList();
-        var project = {name: name, path: path};
-        if (prjList === undefined) {
-            prjList = [project];
-        } else {
-            // If we have this path already then remove it first.
-            var foundIndex = -1;
-            var i = 0;
-            for (i = 0; i < prjList.length; i++) {
-                if (prjList[i].path === path) {
-                    foundIndex = i;
-                    break;
-                }
-            }
-            
-            if (foundIndex > -1) {
-                prjList.splice(foundIndex, 1);
-            }
-        
-            if (prjList.length >= EXT_MAX_HISTORY_ITEMS) {        // We need to limit, so remove last item first.
-                prjList.pop();
-            }
-            prjList.unshift(project);
-        }
-        
-        saveRecentProjectList(prjList);
-    }
-    
-    function findWorkingDir() {
-        var extPath = FileUtils.getNativeModuleDirectoryPath(module);
-        var extDataPath = extPath + "/" + EXT_NAME + "/" + EXT_DATA_FOLDER;
-    }
-    
     function buildRecentProjectMenuItems() {
         currentMenuIds = [];
         var prjList = getRecentProjectList();
@@ -98,9 +87,9 @@ define(function (require, exports, module) {
         
         var fileMenu = Menus.getMenu(Menus.AppMenuBar.FILE_MENU);
         
-        if (menuDividerId === null) {
-            var dividerMenuItem = fileMenu.addMenuDivider();
-            menuDividerId = dividerMenuItem.id;
+        if (menuDividerStartId === null) {
+            var startDividerMenuItem = fileMenu.addMenuDivider();
+            menuDividerStartId = startDividerMenuItem.id;
         }
         
         var i = 0;
@@ -109,7 +98,7 @@ define(function (require, exports, module) {
                 return;
             }
             var project = prjList[i];
-            var menuName = project.name + " [" + project.path.slice(0, EXT_MAX_MENU_FOLDER_LENGTH) + (project.path.length > EXT_MAX_MENU_FOLDER_LENGTH ? "..." : "") + "]";
+            var menuName = project.folder + " [" + project.path.slice(0, EXT_MAX_MENU_FOLDER_LENGTH) + (project.path.length > EXT_MAX_MENU_FOLDER_LENGTH ? "..." : "") + "]";
             var commandId = COMMAND_RECENT_PRJ + i.toString();
             currentMenuIds.push(commandId);
             
@@ -121,22 +110,10 @@ define(function (require, exports, module) {
                 existingCommand.setName(menuName);
             }
         }
-    }
 
-    function beforeProjectCloseEventHandler(e) {
-        try {
-            var projectRoot = e.currentTarget.getProjectRoot();
-            if (projectRoot !== null && projectRoot._isDirectory) {
-                var projectName = projectRoot.name;
-                var projectPath = projectRoot.fullPath;
-
-                saveToHistory(projectName, projectPath);
-
-                //clearCurrentMenuItems();
-                buildRecentProjectMenuItems();
-            }
-        } catch (ex) {
-            console.error(ex.toString());
+        if (menuDividerEndId === null) {
+            var endDividerMenuItem = fileMenu.addMenuDivider();
+            menuDividerEndId = endDividerMenuItem.id;
         }
     }
 
@@ -150,14 +127,15 @@ define(function (require, exports, module) {
         }
     }
 
+    function afterProjectOpenEventHandler(e) {
 
-
-
+        buildRecentProjectMenuItems();
+    }
 
 
     AppInit.appReady(function () {
         
-        $(ProjectManager).on('beforeProjectClose', beforeProjectCloseEventHandler);
+        $(ProjectManager).on('projectOpen', afterProjectOpenEventHandler);
         
         buildRecentProjectMenuItems();
     });
