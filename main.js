@@ -31,7 +31,8 @@ define(function (require, exports, module) {
     // Module variables
     var currentMenuIds              = [],
         menuDividerStartId          = null,
-        menuDividerEndId            = null;
+        menuDividerEndId            = null,
+        lastMenuId                  = null;
 
     // This is taken from (https://github.com/adobe/brackets/blob/master/src/extensions/default/RecentProjects/main.js#L337)
     function parsePath(path) {
@@ -81,7 +82,7 @@ define(function (require, exports, module) {
     function buildRecentProjectMenuItems() {
         currentMenuIds = [];
         var prjList = getRecentProjectList();
-        if (prjList === undefined) {
+        if (prjList === undefined || prjList.length === 0) {
             return;  // Nothing to build.
         }
         
@@ -105,7 +106,12 @@ define(function (require, exports, module) {
             var existingCommand = CommandManager.get(commandId);
             if (existingCommand === undefined) {
                 CommandManager.register(menuName, commandId, openRecentProjectEventHandler);
-                fileMenu.addMenuItem(commandId);
+                if (lastMenuId === null) {
+                    fileMenu.addMenuItem(commandId);
+                } else {
+                    fileMenu.addMenuItem(commandId, null, Menus.AFTER, lastMenuId);
+                }
+                lastMenuId = commandId;
             } else {
                 existingCommand.setName(menuName);
             }
@@ -136,8 +142,8 @@ define(function (require, exports, module) {
     function removePreviousVersionPref() {
         var history = prefs.get(EXT_PREF_HISTORY);
         if (history && history.length > 0) {
-             prefs.set(EXT_PREF_HISTORY, []);
-             prefs.save();
+            prefs.set(EXT_PREF_HISTORY, []);
+            prefs.save();
         }
     }
 
