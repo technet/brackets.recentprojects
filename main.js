@@ -132,11 +132,19 @@ define(function (require, exports, module) {
         buildRecentProjectMenuItems();
     }
 
+    // This function will be removed from next version,  assuming it has cleard any existing preferences.
+    function removePreviousVersionPref() {
+        var history = prefs.get(EXT_PREF_HISTORY);
+        if (history && history.length > 0) {
+             prefs.set(EXT_PREF_HISTORY, []);
+             prefs.save();
+        }
+    }
 
     AppInit.appReady(function () {
         
         $(ProjectManager).on('projectOpen', afterProjectOpenEventHandler);
-        
+        removePreviousVersionPref();
         buildRecentProjectMenuItems();
     });
 });
