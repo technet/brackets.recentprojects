@@ -1,1 +1,39 @@
-<h2>Brackets RecentProjects</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Brackets RecentProjects</title>
+    <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.2.0/css/bootstrap.min.css">
+</head>
+<body>
+  <div class="container">
+   <h2>Brackets Recent Projects</h2>   
+   <div class="row">
+       <div class="row">
+           <div class="col-md-6">
+               <h3 id="total">Downloads: </h3> 
+           </div>
+       </div>
+       <div class="row">
+           <ul id="daily">
+               
+           </ul>
+       </div>
+   </div>
+  </div>   
+<script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js" type="text/javascript"></script>
+
+<script src="stat.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+
+    $(function() {
+      
+        updateStats("technet.recentprojects");
+    })
+
+</script>    
+   
+
+</body>
+</html>
